@@ -1,0 +1,4 @@
+git+https://git.sr.ht/~williamtrungle/specfp
+streamlit
+plotly
+scipy
