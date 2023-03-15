@@ -190,9 +190,9 @@ if files:
         spectra.append(spectrum)
         variances.append(variance)
     spectra = pd.concat(spectra, axis=1)
-    spectra.index.name = "wavelength"
+    spectra.index.name = "Wavelength (nm)"
     variances = pd.concat(variances, axis=1)
-    variances.index.name = "wavelength"
+    variances.index.name = "Wavelength (nm)"
     for name, names in zip(names, averages):
         spectra[name] = spectra[names].mean(axis=1)
         variances[name] = variances[names].mean(axis=1)
@@ -200,21 +200,21 @@ if files:
         variances.drop(columns=names, inplace=True)
     # Change the data representation to tidy data
     df = spectra.reset_index().melt(
-            "wavelength",
-            var_name="acquisition",
-            value_name="Raman shift")
+            "Wavelength (nm)",
+            var_name="Acquisition",
+            value_name="Raman shift (cm⁻¹)")
 
     # Visualize the loaded spectra
     fig = px.line(
             df,
-            x="wavelength",
-            y="Raman shift",
-            color="acquisition",
+            x="Wavelength (nm)",
+            y="Raman shift (cm⁻¹)",
+            color="Acquisition",
             color_discrete_sequence=px.colors.qualitative.Plotly,
-            hover_name="acquisition",
-            hover_data={"Raman shift": True,
-                        "wavelength": False,
-                        "acquisition": False})
+            hover_name="Acquisition",
+            hover_data={"Raman shift (cm⁻¹)": True,
+                        "Wavelength (nm)": False,
+                        "Acquisition": False})
     # Visualize the standard deviation
     std_upper = spectra + variances ** 0.5
     std_lower = spectra - variances ** 0.5
