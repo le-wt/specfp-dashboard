@@ -4,6 +4,8 @@ Run:
     streamlit run raman_spectroscopy.py
 """
 
+from streamlit_plotly_events import plotly_events
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -157,6 +159,8 @@ def hex2rgb(hex_color: str) -> tuple:
 
 # Configure app
 st.set_page_config(layout="wide")
+if "peak" not in st.session_state:
+    st.session_state["peak"] = {}
 
 # Set page title
 st.title("Raman Spectroscopy Band Analysis")
@@ -209,6 +213,7 @@ if files:
             df,
             x="Wavelength (nm)",
             y="Raman shift (cm⁻¹)",
+            markers=True,
             color="Acquisition",
             color_discrete_sequence=px.colors.qualitative.Plotly,
             hover_name="Acquisition",
@@ -242,6 +247,44 @@ if files:
             fill="tonexty",
             fillcolor=f"rgba{color}",
             hoverinfo="skip"))
+
     # Plot the generated figure
-    fig.update_layout(hovermode="x unified")
-    st.plotly_chart(fig, use_container_width=True)
+    fig.update_layout(hovermode="x unified", dragmode="select", xaxis={"showgrid": False})
+    fig.update_traces(marker={"size": 1})
+    # st.plotly_chart(fig, use_container_width=True)
+    for coord, enable in st.session_state["peak"].items():
+        if enable:
+            fig.add_vline(coord, opacity=0.2, line_dash="dot")
+
+    # Update figure on click events
+    graph = st.empty()
+    st.caption("Usage: Select a region around a peak to place a vertical lines.")
+    with st.expander("Configure figure"):
+        st.subheader("Control figure size")
+        left, right = st.columns(2)
+        with left:
+            width = st.number_input("Figure width (pixels)", 1, value=1000, step=50)
+        with right:
+            height = st.number_input("Figure height (pixels)", 1, value=500, step=50)
+        refresh = False
+        st.subheader("Select peaks")
+        for coord, enable in st.session_state["peak"].items():
+            value = st.checkbox(
+                    f"Enable peak at {coord}nm",
+                    enable)
+            st.session_state["peak"][coord] = value
+            if value != enable:
+                refresh = True
+        if refresh:
+            st.experimental_rerun()
+    with graph.container():
+        box = plotly_events(
+                fig,
+                click_event=False,
+                select_event=True,
+                override_width=width,
+                override_height=height)
+    if box:
+        coord = max(box, key=lambda point: point["y"])["x"]
+        st.session_state["peak"][coord] = True
+        st.experimental_rerun()

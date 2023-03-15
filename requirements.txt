@@ -1,4 +1,5 @@
 git+https://git.sr.ht/~williamtrungle/specfp
 streamlit
 plotly
+streamlit_plotly_events
 scipy
