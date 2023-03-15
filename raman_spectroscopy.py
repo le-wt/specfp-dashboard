@@ -25,9 +25,9 @@ def load(file):
     spectra = spectra.apply(scipy.signal.savgol_filter, raw=True, **SAVGOL)
     spectra = spectra.apply(bubblefill)
     spectra = spectra.apply(SNV)
-    std = spectra.std(axis=1).squeeze()
+    variance = spectra.var(axis=1).squeeze()
     spectra = spectra.mean(axis=1).squeeze()
-    return spectra, std
+    return spectra, variance
 
 
 def discretize(df: pd.DataFrame, copy: bool = False) -> pd.DataFrame:
@@ -68,6 +68,7 @@ def remove_cosmic_rays(spectrum: np.ndarray, stdfactor: int = 3) -> pd.DataFrame
 
 
 def bubblefill(spectrum, bubblewidths=40, fitorder=1, do_smoothing=True):
+    """Compute the Raman shift of a spectral acquisition."""
 
     def keep_largest(x0, x2, baseline, bubble):
         for j in range(x0, x2 + 1):
@@ -135,6 +136,7 @@ def bubblefill(spectrum, bubblewidths=40, fitorder=1, do_smoothing=True):
     return raman
 
 def SNV(array) -> np.ndarray:
+    """Standard normal variate of a spectrum."""
     if array.ndim == 2:
         array[..., 1:, :] -= array[..., 1:, :].mean(axis=sans_penultimate(array))
         array[..., 1:, :] /= array[..., 1:, :].std(axis=sans_penultimate(array))
@@ -155,44 +157,67 @@ def hex2rgb(hex_color: str) -> tuple:
 
 # Configure app
 st.set_page_config(layout="wide")
-_, col, _ = st.columns([1, 2, 1])
-with col:
-    # Set page title
-    st.title("Raman Spectroscopy Band Analysis")
 
-    # Upload files
+# Set page title
+st.title("Raman Spectroscopy Band Analysis")
+
+# Select files and the number of spectra to produce
+with st.sidebar:
+    st.header("1. Upload files")
     files = st.file_uploader(
             label="Spectra files",
             type=["wdf"],
             accept_multiple_files=True)
+    st.header("2. Form new averages of files")
+    averages, names = [], []
+    for selector in range(st.number_input("Number of spectra averages", 0)):
+        averages.append(st.multiselect(
+            "Spectra to be averaged",
+            [file.name for file in files],
+            key=f"multiselect-{selector}"))
+        names.append(st.text_input(
+            f"New name for average {selector + 1}",
+            key=f"text-{selector}"))
 
 
-# Read and preprocess files
 if files:
-    spectra, SD = [], []
+    # Read and preprocess files
+    spectra, variances = [], []
     for file in files:
-        spectrum, std = load(file)
-        spectrum.name, std.name = file.name, file.name
+        spectrum, variance = load(file)
+        spectrum.name = file.name
+        variance.name = file.name
         spectra.append(spectrum)
-        SD.append(std)
+        variances.append(variance)
     spectra = pd.concat(spectra, axis=1)
     spectra.index.name = "wavelength"
-    SD = pd.concat(SD, axis=1)
-    SD.index.name = "wavelength"
-
-# Visualize the loaded spectra
+    variances = pd.concat(variances, axis=1)
+    variances.index.name = "wavelength"
+    for name, names in zip(names, averages):
+        spectra[name] = spectra[names].mean(axis=1)
+        variances[name] = variances[names].mean(axis=1)
+        spectra.drop(columns=names, inplace=True)
+        variances.drop(columns=names, inplace=True)
+    # Change the data representation to tidy data
     df = spectra.reset_index().melt(
             "wavelength",
             var_name="acquisition",
             value_name="Raman shift")
+
+    # Visualize the loaded spectra
     fig = px.line(
             df,
             x="wavelength",
             y="Raman shift",
             color="acquisition",
-            color_discrete_sequence=px.colors.qualitative.Plotly)
-    SD_upper = spectra + SD
-    SD_lower = spectra - SD
+            color_discrete_sequence=px.colors.qualitative.Plotly,
+            hover_name="acquisition",
+            hover_data={"Raman shift": True,
+                        "wavelength": False,
+                        "acquisition": False})
+    # Visualize the standard deviation
+    std_upper = spectra + variances ** 0.5
+    std_lower = spectra - variances ** 0.5
     for trace in fig["data"]:
         col = trace.legendgroup
         if trace.line.color[0] == "#":
@@ -201,20 +226,22 @@ if files:
             color = f"({trace.line.color[4:-1]}, 0.2)"
         fig.add_trace(go.Scatter(
             x=spectra.index,
-            y=SD_lower[col],
+            y=std_lower[col],
             showlegend=False,
             legendgroup=col,
             mode="lines",
             line={"width": 0},
-            ))
+            hoverinfo="skip"))
         fig.add_trace(go.Scatter(
             x=spectra.index,
-            y=SD_upper[col],
+            y=std_upper[col],
             showlegend=False,
             legendgroup=col,
             mode="lines",
             line={"width": 0},
             fill="tonexty",
             fillcolor=f"rgba{color}",
-            ))
+            hoverinfo="skip"))
+    # Plot the generated figure
+    fig.update_layout(hovermode="x unified")
     st.plotly_chart(fig, use_container_width=True)
