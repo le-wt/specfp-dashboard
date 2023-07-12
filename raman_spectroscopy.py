@@ -23,7 +23,7 @@ def load(
         file: str,
         cosmic_rays_filter: bool = True,
         savgol_filter: bool = True,
-        bubblefill: bool = True,
+        bubblefill_filter: bool = True,
         standard_normal_variate: bool = True,
         ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Load WDF file path or binary stream."""
@@ -33,7 +33,7 @@ def load(
         spectra = spectra.apply(remove_cosmic_rays, raw=True)
     if savgol_filter:
         spectra = spectra.apply(scipy.signal.savgol_filter, raw=True, **SAVGOL)
-    if bubblefill:
+    if bubblefill_filter:
         spectra = spectra.apply(bubblefill)
     if standard_normal_variate:
         spectra = spectra.apply(SNV)
@@ -186,7 +186,7 @@ with st.sidebar:
     filters = {
         "cosmic_rays_filter": st.checkbox("Remove cosmic rays", True),
         "savgol_filter": st.checkbox("Apply the Savgol filter", True),
-        "bubblefill":  st.checkbox("Apply the BubbleFill baseline removal", True),
+        "bubblefill_filter":  st.checkbox("Apply the BubbleFill baseline removal", True),
         "standard_normal_variate":  st.checkbox("Apply standard normal variate", True),
     }
     st.header("3. Form new averages of files")
