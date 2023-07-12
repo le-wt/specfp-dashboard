@@ -21,7 +21,7 @@ SAVGOL = {"window_length": 11, "polyorder": 3}
 @st.cache_data
 def load(
         file: str,
-        remove_cosmic_rays: bool = True,
+        cosmic_rays_filter: bool = True,
         savgol_filter: bool = True,
         bubblefill: bool = True,
         standard_normal_variate: bool = True,
@@ -29,7 +29,7 @@ def load(
     """Load WDF file path or binary stream."""
     spectra = specfp.decoders.load(file)
     spectra = discretize(spectra.T)
-    if remove_cosmic_rays:
+    if cosmic_rays_filter:
         spectra = spectra.apply(remove_cosmic_rays, raw=True)
     if savgol_filter:
         spectra = spectra.apply(scipy.signal.savgol_filter, raw=True, **SAVGOL)
@@ -184,7 +184,7 @@ with st.sidebar:
             accept_multiple_files=True)
     st.header("2. Apply signal preprocessing filters")
     filters = {
-        "remove_cosmic_rays": st.checkbox("Remove cosmic rays", True),
+        "cosmic_rays_filter": st.checkbox("Remove cosmic rays", True),
         "savgol_filter": st.checkbox("Apply the Savgol filter", True),
         "bubblefill":  st.checkbox("Apply the BubbleFill baseline removal", True),
         "standard_normal_variate":  st.checkbox("Apply standard normal variate", True),
