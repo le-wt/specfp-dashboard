@@ -190,8 +190,10 @@ with st.sidebar:
         "standard_normal_variate":  st.checkbox("Apply standard normal variate", True),
     }
     st.header("3. Form new averages of files")
-    averages, names = [], []
-    for selector in range(st.number_input("Number of spectra averages", 0)):
+    averages, names, colors = [], [], []
+    for selector, default_color in zip(
+            range(st.number_input("Number of spectra averages", 0)),
+            px.colors.qualitative.Plotly):
         averages.append(st.multiselect(
             "Spectra to be averaged",
             [file.name for file in files],
@@ -199,6 +201,10 @@ with st.sidebar:
         names.append(st.text_input(
             f"New name for average {selector + 1}",
             key=f"text-{selector}"))
+        colors.append(st.color_picker(
+            f"Spectrum color for average {selector + 1}",
+            key=f"color-{selector}",
+            value=default_color))
 
 
 if files:
@@ -232,11 +238,13 @@ if files:
             y="intensity",
             markers=True,
             color="Acquisition",
-            color_discrete_sequence=px.colors.qualitative.Plotly,
+            color_discrete_sequence=colors,
             hover_name="Acquisition",
             hover_data={"intensity": True,
                         "Raman shift (cm⁻¹)": False,
                         "Acquisition": False})
+    fig.update_yaxes(visible=False)
+    fig.update_traces(opacity=0.75)
     # Visualize the standard deviation
     std_upper = spectra + variances ** 0.5
     std_lower = spectra - variances ** 0.5
