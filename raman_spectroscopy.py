@@ -192,7 +192,7 @@ with st.sidebar:
     st.header("3. Form new averages of files")
     averages, names, colors = [], [], []
     for selector, default_color in zip(
-            range(st.number_input("Number of spectra averages", 0)),
+            range(st.number_input("Number of spectra averages", 1)),
             px.colors.qualitative.Plotly):
         averages.append(st.multiselect(
             "Spectra to be averaged",
